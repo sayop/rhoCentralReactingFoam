@@ -1,0 +1,124 @@
+#include "createRDeltaT.H"
+
+Info<< "Reading thermophysical properties\n" << endl;
+
+autoPtr<fluidReactionThermo> pThermo
+(
+    fluidReactionThermo::New(mesh)
+);
+fluidReactionThermo& thermo = pThermo();
+volScalarField& e = thermo.he();
+
+basicSpecieMixture& composition = thermo.composition();
+PtrList<volScalarField>& Y = composition.Y();
+
+Info<< "Number of species = " << Y.size() << nl;
+forAll(Y, i)
+{
+    Info<< "  species[" << i << "] = " << Y[i].name() << nl;
+}
+Info<< endl;
+
+//
+//
+//
+//
+
+Info<< "Reading field U\n" << endl;
+volVectorField U
+(
+    IOobject
+    (
+        "U",
+        runTime.timeName(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh
+);
+
+volScalarField rho
+(
+    IOobject
+    (
+        "rho",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    thermo.rho()
+);
+
+volVectorField rhoU
+(
+    IOobject
+    (
+        "rhoU",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    rho*U
+);
+
+volScalarField rhoE
+(
+    IOobject
+    (
+        "rhoE",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    rho*(e + 0.5*magSqr(U))
+);
+
+surfaceScalarField pos
+(
+    IOobject
+    (
+        "pos",
+        runTime.timeName(),
+        mesh
+    ),
+    mesh,
+    dimensionedScalar(dimless, 1.0)
+);
+
+surfaceScalarField neg
+(
+    IOobject
+    (
+        "neg",
+        runTime.timeName(),
+        mesh
+    ),
+    mesh,
+    dimensionedScalar(dimless, -1.0)
+);
+
+surfaceScalarField phi("phi", fvc::flux(rhoU));
+
+Info<< "Creating turbulence model\n" << endl;
+autoPtr<compressible::momentumTransportModel> turbulence
+(
+    compressible::momentumTransportModel::New
+    (
+        rho,
+        U,
+        phi,
+        thermo
+    )
+);
+
+Info<< "Creating thermophysical transport model\n" << endl;
+autoPtr<fluidThermophysicalTransportModel> thermophysicalTransport
+(
+    fluidThermophysicalTransportModel::New(turbulence(), thermo)
+);
+
+#include "createFvConstraints.H"
