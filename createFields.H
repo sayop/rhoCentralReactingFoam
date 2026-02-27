@@ -1,6 +1,6 @@
 #include "createRDeltaT.H"
 
-Info<< "Reading thermophysical properties\n" << endl;
+Info<< "Reading physical properties\n" << endl;
 
 autoPtr<fluidReactionThermo> pThermo
 (
@@ -9,15 +9,50 @@ autoPtr<fluidReactionThermo> pThermo
 fluidReactionThermo& thermo = pThermo();
 volScalarField& e = thermo.he();
 
+// ========== Detect Mixture Type ==========
+// Read physicalProperties dictionary
+const IOdictionary thermoDict
+(
+    IOobject
+    (
+        "physicalProperties",
+        mesh.time().constant(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE
+    )
+);
+
+// Get the mixture type from thermoType
+word mixtureType("multiComponentMixture");  // Default
+if (thermoDict.found("thermoType"))
+{
+    const dictionary& thermoType = thermoDict.subDict("thermoType");
+    if (thermoType.found("mixture"))
+    {
+        mixtureType = thermoType.lookup<word>("mixture");
+    }
+}
+
+// Declare the bool flag
+bool isPureMixture = (mixtureType == "pureMixture");
+
+Info<< "Mixture type: " << mixtureType << nl;
+
 basicSpecieMixture& composition = thermo.composition();
 PtrList<volScalarField>& Y = composition.Y();
 
-Info<< "Number of species = " << Y.size() << nl;
-forAll(Y, i)
+if (!isPureMixture)
 {
-    Info<< "  species[" << i << "] = " << Y[i].name() << nl;
+    Info<< "Number of species = " << Y.size() << nl;
+    forAll(Y, i)
+    {
+        Info<< "  species[" << i << "] = " << Y[i].name() << nl;
+    }
+    Info<< endl;
 }
-Info<< endl;
+
+
 
 //
 //
