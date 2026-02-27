@@ -29,7 +29,8 @@
           - fvc::div(tauMC)
         );
 
-	UEqnVisc.relax();
+	// Optional: reduce relaxation for faster convergence
+	//UEqnVisc.relax(); // or remove entirely with direct solver
 	UEqnVisc.solve();
 
         rhoU = rho*U;

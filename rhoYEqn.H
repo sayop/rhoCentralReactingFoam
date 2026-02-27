@@ -33,8 +33,8 @@ forAll(Y, i)
 	  + thermophysicalTransport->divj(Yi)
         );
 
-        YiEqn.relax();
-
+	// Optional: reduce relaxation for faster convergence
+        //YiEqn.relax(); // or remove entirely with direct solver
         YiEqn.solve("Yi");
     }
 }
